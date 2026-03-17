@@ -59,6 +59,30 @@ abstract contract Properties is BeforeAfter, Asserts {
         return value < 0 ? -value : value;
     }
 
+    /// @notice Optimization target for the Echidna no-op delay POC.
+    /// @dev Maximizes the relative difference between total borrowed and total supplied assets (v1 definition).
+    function optimize_totalBorrowedLessThanSupplied_v1() public returns (int256 maxViolation) {
+        uint256 assetCount = iHub.getAssetCount();
+        maxViolation = type(int256).min;
+
+        for (uint256 i = 0; i < assetCount; i++) {
+            uint256 totalBorrowed = iHub.getAssetTotalOwed(i);
+            uint256 totalSupplied = iHub.previewRemoveByShares(i, iHub.getAddedShares(i)) + iHub.getAssetAccruedFees(i);
+
+            if (totalSupplied <= MIN_TOTAL_SUPPLIED) {
+                continue;
+            }
+
+            int256 diff = totalBorrowed >= totalSupplied
+                ? int256(totalBorrowed - totalSupplied)
+                : -int256(totalSupplied - totalBorrowed);
+            int256 relativeDiff = _relativeDiff(diff, totalSupplied);
+            if (relativeDiff > maxViolation) {
+                maxViolation = relativeDiff;
+            }
+        }
+    }
+
     /// @notice Invariant 1: Total borrowed assets <= total supplied assets (v0)
     /// @dev Uses definition assumed by the auditors
     function invariant_totalBorrowedLessThanSupplied_v0() public returns (bool) {
