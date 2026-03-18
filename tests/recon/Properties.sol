@@ -5,13 +5,11 @@ import {Asserts} from "@chimera/Asserts.sol";
 import {BeforeAfter} from "./BeforeAfter.sol";
 
 /// @notice Invariants are written to support both Echidna property mode (bool) and optimization mode (int256).
-/// @dev Default is property mode; to switch, run:
-///      `sed -i '' -e 's/OPTIMIZATION_MODE = false/OPTIMIZATION_MODE = true/' -e 's/public returns (bool)/public returns (int256 maxViolation)/g' -e 's/return maxViolation <= 0;/return maxViolation;/g' tests/recon/Properties.sol`
-///      This keeps the same invariant logic but changes the return type and value so fuzzers can optimize on a
-///      signed percentage target where <= 0 is success and > 0 is a violation, while skipping assertions.
+/// @dev This branch is configured for optimization mode, which reuses the same invariant logic but returns the
+///      signed violation score directly so Echidna can optimize for larger positive values while skipping assertions.
 abstract contract Properties is BeforeAfter, Asserts {
     int256 internal constant PERCENT = int256(1e18);
-    bool internal constant OPTIMIZATION_MODE = false;
+    bool internal constant OPTIMIZATION_MODE = true;
 
     /// @dev Avoids Low likelihood scenarios in Audit Contest
     uint256 internal constant MIN_TOTAL_SUPPLIED = 1e6;
@@ -61,9 +59,9 @@ abstract contract Properties is BeforeAfter, Asserts {
 
     /// @notice Invariant 1: Total borrowed assets <= total supplied assets (v0)
     /// @dev Uses definition assumed by the auditors
-    function invariant_totalBorrowedLessThanSupplied_v0() public returns (bool) {
+    function optimize_totalBorrowedLessThanSupplied_v0() public returns (int256 maxViolation) {
         uint256 assetCount = iHub.getAssetCount();
-        int256 maxViolation = type(int256).min;
+        maxViolation = type(int256).min;
 
         for (uint256 i = 0; i < assetCount; i++) {
             uint256 totalBorrowed = iHub.getAssetTotalOwed(i);
@@ -80,14 +78,14 @@ abstract contract Properties is BeforeAfter, Asserts {
         if (!OPTIMIZATION_MODE) {
             t(maxViolation <= 0, INVARIANT_1_TOTAL_BORROWED_LESS_THAN_SUPPLIED_V0);
         }
-        return maxViolation <= 0;
+        return maxViolation;
     }
 
     /// @notice Invariant 1: Total borrowed assets <= total supplied assets (v1)
     /// @dev Uses definition provided by the protocol team
-    function invariant_totalBorrowedLessThanSupplied_v1() public returns (bool) {
+    function optimize_totalBorrowedLessThanSupplied_v1() public returns (int256 maxViolation) {
         uint256 assetCount = iHub.getAssetCount();
-        int256 maxViolation = type(int256).min;
+        maxViolation = type(int256).min;
 
         for (uint256 i = 0; i < assetCount; i++) {
             uint256 totalBorrowed = iHub.getAssetTotalOwed(i);
@@ -108,14 +106,14 @@ abstract contract Properties is BeforeAfter, Asserts {
         if (!OPTIMIZATION_MODE) {
             t(maxViolation <= 0, INVARIANT_1_TOTAL_BORROWED_LESS_THAN_SUPPLIED_V1);
         }
-        return maxViolation <= 0;
+        return maxViolation;
     }
 
     /// @notice Invariant 1: Total borrowed assets <= total supplied assets (v2)
     /// @dev Uses definition provided by the protocol team with auditors fix
-    function invariant_totalBorrowedLessThanSupplied_v2() public returns (bool) {
+    function optimize_totalBorrowedLessThanSupplied_v2() public returns (int256 maxViolation) {
         uint256 assetCount = iHub.getAssetCount();
-        int256 maxViolation = type(int256).min;
+        maxViolation = type(int256).min;
 
         for (uint256 i = 0; i < assetCount; i++) {
             uint256 totalBorrowed = iHub.getAssetTotalOwed(i);
@@ -136,13 +134,13 @@ abstract contract Properties is BeforeAfter, Asserts {
         if (!OPTIMIZATION_MODE) {
             t(maxViolation <= 0, INVARIANT_1_TOTAL_BORROWED_LESS_THAN_SUPPLIED_V2);
         }
-        return maxViolation <= 0;
+        return maxViolation;
     }
 
     /// @notice Invariant 2: Total borrowed shares == sum of Spoke debt shares
-    function invariant_totalBorrowedSharesMatchesSpokeSum() public returns (bool) {
+    function optimize_totalBorrowedSharesMatchesSpokeSum() public returns (int256 maxViolation) {
         uint256 assetCount = iHub.getAssetCount();
-        int256 maxViolation = type(int256).min;
+        maxViolation = type(int256).min;
 
         for (uint256 i = 0; i < assetCount; i++) {
             uint256 hubDrawnShares = iHub.getAssetDrawnShares(i);
@@ -165,13 +163,13 @@ abstract contract Properties is BeforeAfter, Asserts {
         if (!OPTIMIZATION_MODE) {
             t(maxViolation <= 0, INVARIANT_2_TOTAL_BORROWED_SHARES_MATCHES_SPOKE_SUM);
         }
-        return maxViolation <= 0;
+        return maxViolation;
     }
 
     /// @notice Invariant 3: Hub added assets >= sum of Spoke added assets (converted from shares)
-    function invariant_hubAddedAssetsGreaterThanSpokeSum() public returns (bool) {
+    function optimize_hubAddedAssetsGreaterThanSpokeSum() public returns (int256 maxViolation) {
         uint256 assetCount = iHub.getAssetCount();
-        int256 maxViolation = type(int256).min;
+        maxViolation = type(int256).min;
 
         for (uint256 i = 0; i < assetCount; i++) {
             uint256 addedShares = iHub.getAddedShares(i);
@@ -195,13 +193,13 @@ abstract contract Properties is BeforeAfter, Asserts {
         if (!OPTIMIZATION_MODE) {
             t(maxViolation <= 0, INVARIANT_3_HUB_ADDED_ASSETS_GREATER_THAN_SPOKE_SUM);
         }
-        return maxViolation <= 0;
+        return maxViolation;
     }
 
     /// @notice Invariant 4: Hub added shares == sum of Spoke added shares
-    function invariant_hubAddedSharesMatchesSpokeSum() public returns (bool) {
+    function optimize_hubAddedSharesMatchesSpokeSum() public returns (int256 maxViolation) {
         uint256 assetCount = iHub.getAssetCount();
-        int256 maxViolation = type(int256).min;
+        maxViolation = type(int256).min;
 
         for (uint256 i = 0; i < assetCount; i++) {
             uint256 hubAddedShares = iHub.getAddedShares(i);
@@ -224,13 +222,13 @@ abstract contract Properties is BeforeAfter, Asserts {
         if (!OPTIMIZATION_MODE) {
             t(maxViolation <= 0, INVARIANT_4_HUB_ADDED_SHARES_MATCHES_SPOKE_SUM);
         }
-        return maxViolation <= 0;
+        return maxViolation;
     }
 
     /// @notice Invariant 5: Supply share price and drawn index cannot decrease
-    function invariant_supplySharePriceAndDrawnIndexMonotonic() public returns (bool) {
+    function optimize_supplySharePriceAndDrawnIndexMonotonic() public returns (int256 maxViolation) {
         uint256 assetCount = iHub.getAssetCount();
-        int256 maxViolation = type(int256).min;
+        maxViolation = type(int256).min;
 
         for (uint256 i = 0; i < assetCount; i++) {
             uint256 currentDrawnIndex = iHub.getAssetDrawnIndex(i);
@@ -268,12 +266,12 @@ abstract contract Properties is BeforeAfter, Asserts {
         if (!OPTIMIZATION_MODE) {
             t(maxViolation <= 0, INVARIANT_5_SUPPLY_SHARE_PRICE_AND_DRAWN_INDEX_MONOTONIC);
         }
-        return maxViolation <= 0;
+        return maxViolation;
     }
 
     /// @dev Reference https://www.certora.com/blog/the-holy-grail
-    function invariant_shouldNotBecomeLiquidatable() public returns (bool) {
-        int256 maxViolation = type(int256).min;
+    function optimize_shouldNotBecomeLiquidatable() public returns (int256 maxViolation) {
+        maxViolation = type(int256).min;
         if (_after.operation != Operation.SetPrice) {
             int256 diff = (_before.isAnyUserLiquidatable || !_after.isAnyUserLiquidatable) ? int256(0) : PERCENT;
             if (diff > maxViolation) {
@@ -283,7 +281,7 @@ abstract contract Properties is BeforeAfter, Asserts {
         if (!OPTIMIZATION_MODE) {
             t(maxViolation <= 0, INVARIANT_HOLY_GRAIL_SHOULD_NOT_BECOME_LIQUIDATABLE);
         }
-        return maxViolation <= 0;
+        return maxViolation;
     }
 
     /// @dev Canary assertion helper. A failing input is expected to be discovered during fuzzing.
@@ -292,11 +290,11 @@ abstract contract Properties is BeforeAfter, Asserts {
     }
 
     /// @dev Canary global invariant expected to fail immediately.
-    function invariant_canary() public returns (bool) {
-        int256 maxViolation = PERCENT;
+    function optimize_canary() public returns (int256 maxViolation) {
+        maxViolation = PERCENT;
         if (!OPTIMIZATION_MODE) {
             t(maxViolation <= 0, INVARIANT_CANARY_GLOBAL_INVARIANT_FAILURE);
         }
-        return maxViolation <= 0;
+        return maxViolation;
     }
 }

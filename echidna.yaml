@@ -1,4 +1,4 @@
-testMode: "assertion"
+testMode: "optimization"
 prefix: "echidna_"
 coverage: true
 corpusDir: "corpus/echidna"
