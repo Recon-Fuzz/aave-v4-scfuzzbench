@@ -44,7 +44,6 @@ abstract contract Properties is BeforeAfter, Asserts {
     string constant INVARIANT_HOLY_GRAIL_SHOULD_NOT_BECOME_LIQUIDATABLE =
         "Holy grail: Users should not become liquidatable except by price change";
     string constant INVARIANT_CANARY_GLOBAL_INVARIANT_FAILURE = "Canary invariant";
-    bool internal constant ENABLE_GLOBAL_INVARIANT_CANARY = false;
 
     function _relativeDiff(int256 diff, uint256 denom) internal pure returns (int256) {
         if (denom == 0) {
@@ -287,19 +286,13 @@ abstract contract Properties is BeforeAfter, Asserts {
         return maxViolation <= 0;
     }
 
-    /// @dev Canary assertion helper. Keep this as the Foundry canary because alpharush preflights
-    /// all invariants before fuzzing, so an always-failing global invariant would abort setup.
+    /// @dev Canary assertion helper. A failing input is expected to be discovered during fuzzing.
     function assert_canary_ASSERTION_CANARY(uint256 entropy) public {
         t(entropy > 0, ASSERTION_CANARY);
     }
 
-    /// @dev Optional global canary. Disabled by default for alpharush because invariants are
-    /// preflighted before fuzzing begins.
+    /// @dev Canary global invariant expected to fail immediately.
     function invariant_canary() public returns (bool) {
-        if (!ENABLE_GLOBAL_INVARIANT_CANARY) {
-            return true;
-        }
-
         int256 maxViolation = PERCENT;
         if (!OPTIMIZATION_MODE) {
             t(maxViolation <= 0, INVARIANT_CANARY_GLOBAL_INVARIANT_FAILURE);
